@@ -1,7 +1,5 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
-import './dialog.css'
-import apiClient from './services/api'
 import { buscarResumoDashboard, type DashboardResumo } from './services/dashboard'
 
 type IconName = 'home' | 'users' | 'receipt' | 'gift' | 'chart' | 'settings' | 'search' | 'bell' | 'arrow' | 'plus' | 'more' | 'up' | 'calendar'
@@ -45,41 +43,11 @@ function App() {
   const [notice, setNotice] = useState(false)
   const [dashboard, setDashboard] = useState<DashboardResumo>(vazio)
   const [erro, setErro] = useState('')
-  const [formAberto, setFormAberto] = useState(false)
-  const [clienteId, setClienteId] = useState('')
-  const [valorCompra, setValorCompra] = useState('')
-  const [enviando, setEnviando] = useState(false)
   const greeting = active === 'Visão geral' ? 'Visão geral' : active
 
   useEffect(() => {
     buscarResumoDashboard().then(setDashboard).catch(() => setErro('Não foi possível carregar os dados do banco. Verifique se a API está em execução.'))
   }, [])
-
-  const registrarCompra = async (evento: FormEvent<HTMLFormElement>) => {
-    evento.preventDefault()
-    setEnviando(true)
-    setErro('')
-    try {
-      const resposta = await apiClient.post('/compras', {
-        cliente_id: clienteId,
-        valor: Number(valorCompra),
-        data: new Date().toISOString().slice(0, 10),
-      })
-      setNotice(true)
-      setFormAberto(false)
-      setClienteId('')
-      setValorCompra('')
-      const resumo = await buscarResumoDashboard()
-      setDashboard(resumo)
-      setTimeout(() => setNotice(false), 4000)
-      console.info('Pontos gerados:', resposta.data.pontos_gerados)
-    } catch (falha) {
-      const detalhe = (falha as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      setErro(detalhe || 'Não foi possível registrar a compra. Tente novamente.')
-    } finally {
-      setEnviando(false)
-    }
-  }
 
   return <div className="app-shell">
     <aside className="sidebar">
@@ -98,10 +66,9 @@ function App() {
       </header>
       <section className="content">
         <div className="heading-row"><div><p className="eyebrow">PAINEL ADMINISTRATIVO</p><h1>{greeting}</h1><p className="subtitle">Acompanhe o desempenho do seu programa de fidelidade.</p></div>
-          <div className="heading-actions"><label className="period-button"><Icon name="calendar" size={17} /><select value={period} onChange={(e) => setPeriod(e.target.value)} aria-label="Período"><option>Este mês</option><option>Últimos 30 dias</option><option>Este ano</option></select></label><button className="primary-button" onClick={() => setFormAberto(true)}><Icon name="plus" size={18} />Novo lançamento</button></div></div>
-        {notice && <div className="toast">Compra registrada com sucesso.<button onClick={() => setNotice(false)}>×</button></div>}
+          <div className="heading-actions"><label className="period-button"><Icon name="calendar" size={17} /><select value={period} onChange={(e) => setPeriod(e.target.value)} aria-label="Período"><option>Este mês</option><option>Últimos 30 dias</option><option>Este ano</option></select></label><button className="primary-button" onClick={() => setNotice(true)}><Icon name="plus" size={18} />Novo lançamento</button></div></div>
+        {notice && <div className="toast">Lançamentos estarão disponíveis assim que a API for conectada.<button onClick={() => setNotice(false)}>×</button></div>}
         {erro && <div className="toast error-toast">{erro}<button onClick={() => setErro('')}>×</button></div>}
-        {formAberto && <div className="dialog-backdrop" role="presentation"><form className="dialog" onSubmit={registrarCompra}><div className="dialog-head"><div><p className="eyebrow">PROGRAMA DE PONTOS</p><h2>Novo lançamento</h2></div><button type="button" className="close-button" onClick={() => setFormAberto(false)} aria-label="Fechar">×</button></div><p className="dialog-copy">Registre uma compra para creditar pontos ao cliente.</p><label className="dialog-field">ID do cliente<input required value={clienteId} onChange={(evento) => setClienteId(evento.target.value)} placeholder="UUID do cliente" /></label><label className="dialog-field">Valor da compra (R$)<input required min="0.01" step="0.01" type="number" value={valorCompra} onChange={(evento) => setValorCompra(evento.target.value)} placeholder="0,00" /></label><div className="dialog-actions"><button type="button" className="period-button" onClick={() => setFormAberto(false)}>Cancelar</button><button className="primary-button" disabled={enviando}>{enviando ? 'Registrando...' : 'Registrar compra'}</button></div></form></div>}
         <div className="stat-grid">
           <article className="stat-card"><div className="stat-icon purple"><Icon name="users" /></div><p>Clientes ativos</p><strong>{formatarNumero(dashboard.clientes_ativos)}</strong><span className="neutral-stat">Total cadastrado <em>no programa</em></span></article>
           <article className="stat-card"><div className="stat-icon pink"><Icon name="chart" /></div><p>Pontos emitidos</p><strong>{formatarNumero(dashboard.pontos_emitidos)}</strong><span className="neutral-stat">No período <em>selecionado</em></span></article>
