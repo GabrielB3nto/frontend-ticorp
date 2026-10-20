@@ -46,12 +46,12 @@ function App() {
         {nav.map(([label, icon]) => <button key={label} className={`nav-item ${active === label ? 'active' : ''}`} onClick={() => setActive(label)}><Icon name={icon} />{label}</button>)}
       </nav>
       <div className="sidebar-footer"><div className="help-card"><div className="help-icon">?</div><div><strong>Precisa de ajuda?</strong><span>Acesse nossa central</span></div><Icon name="arrow" size={15} /></div>
-        <div className="profile"><div className="avatar">GM</div><div><strong>Gabriel Martins</strong><span>Administrador</span></div><button aria-label="Mais opções"><Icon name="more" size={19} /></button></div></div>
+        <div className="profile"><div className="avatar">GB</div><div><strong>Gabriel Bento</strong><span>Administrador</span></div><button aria-label="Mais opções"><Icon name="more" size={19} /></button></div></div>
     </aside>
     <main className="main-content">
       <header className="topbar"><div className="mobile-brand"><span className="brand-mark"><span /></span> Ti<span>Corp</span></div>
         <label className="search"><Icon name="search" size={18} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente, pedido ou lançamento..." /><kbd>⌘ K</kbd></label>
-        <div className="top-actions"><button className="icon-button notification" aria-label="Notificações"><Icon name="bell" /><i /></button><span className="top-avatar">GM</span></div>
+        <div className="top-actions"><button className="icon-button notification" aria-label="Notificações"><Icon name="bell" /><i /></button><span className="top-avatar">GB</span></div>
       </header>
       <section className="content">
         <div className="heading-row"><div><p className="eyebrow">PAINEL ADMINISTRATIVO</p><h1>{greeting}</h1><p className="subtitle">Acompanhe o desempenho do seu programa de fidelidade.</p></div>
