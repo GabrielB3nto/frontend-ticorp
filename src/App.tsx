@@ -1,121 +1,158 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { FormEvent, useState } from 'react'
 import './App.css'
-import './dialog.css'
-import apiClient from './services/api'
-import { buscarResumoDashboard, type DashboardResumo } from './services/dashboard'
 
-type IconName = 'home' | 'users' | 'receipt' | 'gift' | 'chart' | 'settings' | 'search' | 'bell' | 'arrow' | 'plus' | 'more' | 'up' | 'calendar'
-
-const paths: Record<IconName, string> = {
-  home: 'M3 10.5 12 3l9 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19.5v-9ZM9 21v-6h6v6',
-  users: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
-  receipt: 'M6 2h12a2 2 0 0 1 2 2v17l-3-2-2.5 2-2.5-2-2.5 2L6 19l-2 2V4a2 2 0 0 1 2-2Zm3 6h6m-6 4h6',
-  gift: 'M20 12v9H4v-9m18-5H2v5h20V7ZM12 21V7M12 7H7.5A2.5 2.5 0 1 1 10 4.5L12 7Zm0 0h4.5A2.5 2.5 0 1 0 14 4.5L12 7Z',
-  chart: 'M4 20V10m6 10V4m6 16v-7m6 7V8',
-  settings: 'M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm0-12v2m0 13v2m8.5-8.5h-2m-13 0h-2m14.51-6.51-1.42 1.42M6.91 17.09l-1.42 1.42m12.52 0-1.42-1.42M6.91 6.91 5.49 5.49',
-  search: 'm21 21-4.35-4.35M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z',
-  bell: 'M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9Zm-8 13h4',
-  arrow: 'M5 12h14m-6-6 6 6-6 6',
-  plus: 'M12 5v14M5 12h14',
-  more: 'M5 12h.01M12 12h.01M19 12h.01',
-  up: 'm18 15-6-6-6 6',
-  calendar: 'M8 2v4m8-4v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1 2-2Z',
-}
-
-function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
-  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[name]} /></svg>
-}
-
-const nav = [['Visão geral', 'home'], ['Clientes', 'users'], ['Lançamentos', 'receipt'], ['Resgates', 'gift'], ['Relatórios', 'chart'], ['Configurações', 'settings']] as const
-const vazio: DashboardResumo = { clientes_ativos: 0, pontos_emitidos: 0, pontos_resgatados: 0, saldo_circulacao: 0, serie: [], ranking: [], atividades: [] }
-const formatarNumero = (valor: number) => new Intl.NumberFormat('pt-BR').format(valor)
-const iniciais = (nome: string) => nome.split(' ').slice(0, 2).map((parte) => parte[0]).join('').toUpperCase()
-const tempoRelativo = (iso: string) => {
-  const minutos = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 60000))
-  if (minutos < 1) return 'Agora'
-  if (minutos < 60) return 'Há ' + minutos + ' min'
-  if (minutos < 1440) return 'Há ' + Math.floor(minutos / 60) + ' h'
-  return 'Há ' + Math.floor(minutos / 1440) + ' dias'
-}
+const categorias = ['Notebook', 'Monitor', 'Cabo', 'Câmera', 'Acessório']
 
 function App() {
-  const [active, setActive] = useState('Visão geral')
-  const [query, setQuery] = useState('')
-  const [period, setPeriod] = useState('Este mês')
-  const [notice, setNotice] = useState(false)
-  const [dashboard, setDashboard] = useState<DashboardResumo>(vazio)
-  const [erro, setErro] = useState('')
-  const [formAberto, setFormAberto] = useState(false)
-  const [clienteId, setClienteId] = useState('')
-  const [valorCompra, setValorCompra] = useState('')
-  const [enviando, setEnviando] = useState(false)
-  const greeting = active === 'Visão geral' ? 'Visão geral' : active
+  const [nome, setNome] = useState('')
+  const [patrimonio, setPatrimonio] = useState('')
+  const [categoria, setCategoria] = useState(categorias[0])
+  const [situacao, setSituacao] = useState('DISPONIVEL')
+  const [observacao, setObservacao] = useState('')
+  const [mensagem, setMensagem] = useState('')
 
-  useEffect(() => {
-    buscarResumoDashboard().then(setDashboard).catch(() => setErro('Não foi possível carregar os dados do banco. Verifique se a API está em execução.'))
-  }, [])
+  function enviarFormulario(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
 
-  const registrarCompra = async (evento: FormEvent<HTMLFormElement>) => {
-    evento.preventDefault()
-    setEnviando(true)
-    setErro('')
-    try {
-      const resposta = await apiClient.post('/compras', {
-        cliente_id: clienteId,
-        valor: Number(valorCompra),
-        data: new Date().toISOString().slice(0, 10),
-      })
-      setNotice(true)
-      setFormAberto(false)
-      setClienteId('')
-      setValorCompra('')
-      const resumo = await buscarResumoDashboard()
-      setDashboard(resumo)
-      setTimeout(() => setNotice(false), 4000)
-      console.info('Pontos gerados:', resposta.data.pontos_gerados)
-    } catch (falha) {
-      const detalhe = (falha as { response?: { data?: { detail?: string } } }).response?.data?.detail
-      setErro(detalhe || 'Não foi possível registrar a compra. Tente novamente.')
-    } finally {
-      setEnviando(false)
+    if (!nome.trim()) {
+      setMensagem('Informe o nome do equipamento para continuar.')
+      return
     }
+
+    setMensagem('Dados validados. O envio ao banco será habilitado na próxima tarefa.')
   }
 
-  return <div className="app-shell">
-    <aside className="sidebar">
-      <a className="brand" href="#inicio" aria-label="TiCorp início"><span className="brand-mark"><span /></span><span>Ti<span>Corp</span></span></a>
-      <div className="workspace"><span className="workspace-dot" /> Programa de pontos <Icon name="arrow" size={15} /></div>
-      <nav aria-label="Navegação principal"><p className="nav-label">MENU</p>
-        {nav.map(([label, icon]) => <button key={label} className={`nav-item ${active === label ? 'active' : ''}`} onClick={() => setActive(label)}><Icon name={icon} />{label}</button>)}
-      </nav>
-      <div className="sidebar-footer"><div className="help-card"><div className="help-icon">?</div><div><strong>Precisa de ajuda?</strong><span>Acesse nossa central</span></div><Icon name="arrow" size={15} /></div>
-        <div className="profile"><div className="avatar">GB</div><div><strong>Gabriel Bento</strong><span>Administrador</span></div><button aria-label="Mais opções"><Icon name="more" size={19} /></button></div></div>
-    </aside>
-    <main className="main-content">
-      <header className="topbar"><div className="mobile-brand"><span className="brand-mark"><span /></span> Ti<span>Corp</span></div>
-        <label className="search"><Icon name="search" size={18} /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar cliente, pedido ou lançamento..." /><kbd>⌘ K</kbd></label>
-        <div className="top-actions"><button className="icon-button notification" aria-label="Notificações"><Icon name="bell" /><i /></button><span className="top-avatar">GB</span></div>
+  return (
+    <div className="app-shell">
+      <header className="topbar">
+        <a className="brand" href="#inicio" aria-label="EMPREST.AI">
+          <span className="brand-mark">E</span>
+          <span>EMPREST<span>.AI</span></span>
+        </a>
+
+        <nav aria-label="Navegação principal">
+          <a href="#catalogo">Catálogo</a>
+          <a href="#emprestimos">Meus empréstimos</a>
+          <a href="#operacoes">Operações</a>
+          <a className="active" href="#equipamentos">Equipamentos</a>
+        </nav>
+
+        <div className="profile">
+          <span className="profile-initials">GB</span>
+          <span>
+            <strong>Gabriel Bento</strong>
+            <small>Operações</small>
+          </span>
+        </div>
       </header>
-      <section className="content">
-        <div className="heading-row"><div><p className="eyebrow">PAINEL ADMINISTRATIVO</p><h1>{greeting}</h1><p className="subtitle">Acompanhe o desempenho do seu programa de fidelidade.</p></div>
-          <div className="heading-actions"><label className="period-button"><Icon name="calendar" size={17} /><select value={period} onChange={(e) => setPeriod(e.target.value)} aria-label="Período"><option>Este mês</option><option>Últimos 30 dias</option><option>Este ano</option></select></label><button className="primary-button" onClick={() => setFormAberto(true)}><Icon name="plus" size={18} />Novo lançamento</button></div></div>
-        {notice && <div className="toast">Compra registrada com sucesso.<button onClick={() => setNotice(false)}>×</button></div>}
-        {erro && <div className="toast error-toast">{erro}<button onClick={() => setErro('')}>×</button></div>}
-        {formAberto && <div className="dialog-backdrop" role="presentation"><form className="dialog" onSubmit={registrarCompra}><div className="dialog-head"><div><p className="eyebrow">PROGRAMA DE PONTOS</p><h2>Novo lançamento</h2></div><button type="button" className="close-button" onClick={() => setFormAberto(false)} aria-label="Fechar">×</button></div><p className="dialog-copy">Registre uma compra para creditar pontos ao cliente.</p><label className="dialog-field">ID do cliente<input required value={clienteId} onChange={(evento) => setClienteId(evento.target.value)} placeholder="UUID do cliente" /></label><label className="dialog-field">Valor da compra (R$)<input required min="0.01" step="0.01" type="number" value={valorCompra} onChange={(evento) => setValorCompra(evento.target.value)} placeholder="0,00" /></label><div className="dialog-actions"><button type="button" className="period-button" onClick={() => setFormAberto(false)}>Cancelar</button><button className="primary-button" disabled={enviando}>{enviando ? 'Registrando...' : 'Registrar compra'}</button></div></form></div>}
-        <div className="stat-grid">
-          <article className="stat-card"><div className="stat-icon purple"><Icon name="users" /></div><p>Clientes ativos</p><strong>{formatarNumero(dashboard.clientes_ativos)}</strong><span className="neutral-stat">Total cadastrado <em>no programa</em></span></article>
-          <article className="stat-card"><div className="stat-icon pink"><Icon name="chart" /></div><p>Pontos emitidos</p><strong>{formatarNumero(dashboard.pontos_emitidos)}</strong><span className="neutral-stat">No período <em>selecionado</em></span></article>
-          <article className="stat-card"><div className="stat-icon amber"><Icon name="gift" /></div><p>Pontos resgatados</p><strong>{formatarNumero(dashboard.pontos_resgatados)}</strong><span className="neutral-stat">No período <em>selecionado</em></span></article>
-          <article className="stat-card"><div className="stat-icon teal"><Icon name="receipt" /></div><p>Saldo em circulação</p><strong>{formatarNumero(dashboard.saldo_circulacao)}</strong><span className="neutral-stat">Pontos ativos <em>no banco</em></span></article>
+
+      <main>
+        <section className="page-heading">
+          <div>
+            <p className="eyebrow">OPERações / catálogo interno</p>
+            <h1>Cadastro de equipamento</h1>
+            <p>Inclua um item de TI que poderá ser disponibilizado para empréstimo.</p>
+          </div>
+          <a className="ghost-button" href="#catalogo">Ver catálogo</a>
+        </section>
+
+        <div className="content-grid">
+          <section className="form-card" aria-labelledby="form-title">
+            <div className="card-heading">
+              <div>
+                <h2 id="form-title">Dados do equipamento</h2>
+                <p>Campos com <b>*</b> são obrigatórios.</p>
+              </div>
+              <span className="operation-badge">Operações</span>
+            </div>
+
+            <form onSubmit={enviarFormulario} noValidate>
+              <div className="fields-grid">
+                <label className="field full-width">
+                  <span>Nome do equipamento <b>*</b></span>
+                  <input
+                    value={nome}
+                    onChange={(event) => setNome(event.target.value)}
+                    placeholder="Ex.: Notebook Dell Latitude 5440"
+                    aria-describedby="nome-ajuda"
+                  />
+                  <small id="nome-ajuda">Use uma identificação clara para facilitar a localização no catálogo.</small>
+                </label>
+
+                <label className="field">
+                  <span>Número de patrimônio</span>
+                  <input
+                    value={patrimonio}
+                    onChange={(event) => setPatrimonio(event.target.value)}
+                    placeholder="Ex.: TI-00421"
+                  />
+                  <small>Se ficar vazio, o item será exibido como TI-—.</small>
+                </label>
+
+                <label className="field">
+                  <span>Categoria <b>*</b></span>
+                  <select value={categoria} onChange={(event) => setCategoria(event.target.value)}>
+                    {categorias.map((item) => <option key={item}>{item}</option>)}
+                  </select>
+                </label>
+
+                <fieldset className="field full-width">
+                  <legend>Situação operacional <b>*</b></legend>
+                  <div className="status-options">
+                    <label className={situacao === 'DISPONIVEL' ? 'selected' : ''}>
+                      <input type="radio" name="situacao" value="DISPONIVEL" checked={situacao === 'DISPONIVEL'} onChange={(event) => setSituacao(event.target.value)} />
+                      <span><strong>Disponível</strong><small>Pronto para ser emprestado.</small></span>
+                    </label>
+                    <label className={situacao === 'MANUTENCAO' ? 'selected' : ''}>
+                      <input type="radio" name="situacao" value="MANUTENCAO" checked={situacao === 'MANUTENCAO'} onChange={(event) => setSituacao(event.target.value)} />
+                      <span><strong>Em manutenção</strong><small>Indisponível até nova avaliação.</small></span>
+                    </label>
+                    <label className={situacao === 'INATIVO' ? 'selected' : ''}>
+                      <input type="radio" name="situacao" value="INATIVO" checked={situacao === 'INATIVO'} onChange={(event) => setSituacao(event.target.value)} />
+                      <span><strong>Inativo</strong><small>Não aparecerá para empréstimo.</small></span>
+                    </label>
+                  </div>
+                </fieldset>
+
+                <label className="field full-width">
+                  <span>Observação</span>
+                  <textarea value={observacao} onChange={(event) => setObservacao(event.target.value)} placeholder="Acessórios, estado de conservação ou outras informações úteis." rows={4} />
+                </label>
+              </div>
+
+              {mensagem && <p className="form-message" role="status">{mensagem}</p>}
+
+              <div className="form-actions">
+                <button className="secondary-button" type="reset" onClick={() => setMensagem('')}>Limpar</button>
+                <button className="primary-button" type="submit">Validar cadastro</button>
+              </div>
+            </form>
+          </section>
+
+          <aside className="sidebar">
+            <section className="info-card">
+              <p className="eyebrow">REGRAS EM VIGOR</p>
+              <h2>Antes de disponibilizar</h2>
+              <ul>
+                <li>Um equipamento só pode ter um empréstimo ativo.</li>
+                <li>O prazo padrão de empréstimo é de até 14 dias.</li>
+                <li>Cada colaborador pode manter até 3 itens ativos.</li>
+                <li>Itens em manutenção ou inativos não podem ser emprestados.</li>
+              </ul>
+            </section>
+            <section className="info-card muted-card">
+              <p className="eyebrow">FORA DESTA VERSÃO</p>
+              <ul>
+                <li>Reserva de equipamento</li>
+                <li>Notificações por e-mail</li>
+                <li>Importação de planilhas</li>
+              </ul>
+            </section>
+          </aside>
         </div>
-        <div className="dashboard-grid">
-          <article className="panel chart-panel"><div className="panel-head"><div><h2>Evolução de pontos</h2><p>Emitidos e resgatados ao longo do período</p></div><button className="dots" aria-label="Opções"><Icon name="more" /></button></div><div className="legend"><span><i className="legend-issued" /> Emitidos</span><span><i className="legend-redeemed" /> Resgatados</span></div><div className="chart"><div className="y-axis"><span>500k</span><span>375k</span><span>250k</span><span>125k</span><span>0</span></div><div className="chart-area"><div className="grid-lines" /><svg viewBox="0 0 650 210" preserveAspectRatio="none" aria-label="Gráfico de evolução de pontos"><defs><linearGradient id="area" x1="0" x2="0" y1="0" y2="1"><stop stopColor="#7656e8" stopOpacity=".24"/><stop offset="1" stopColor="#7656e8" stopOpacity="0"/></linearGradient></defs><path className="area" d="M0 177 C28 162 43 176 70 150 S108 132 132 141 S168 96 197 111 S231 130 258 95 S294 89 322 103 S353 68 385 80 S418 55 450 66 S478 43 510 55 S540 22 574 42 S616 24 650 14 L650 210 L0 210Z"/><path className="issued-line" d="M0 177 C28 162 43 176 70 150 S108 132 132 141 S168 96 197 111 S231 130 258 95 S294 89 322 103 S353 68 385 80 S418 55 450 66 S478 43 510 55 S540 22 574 42 S616 24 650 14"/><path className="redeemed-line" d="M0 188 C30 183 47 190 70 174 S104 164 132 170 S168 148 197 154 S230 164 258 142 S292 142 322 150 S355 127 385 137 S418 115 450 124 S481 105 510 112 S545 96 574 106 S614 86 650 91"/></svg><div className="x-axis"><span>01 Out</span><span>06 Out</span><span>11 Out</span><span>16 Out</span><span>21 Out</span><span>26 Out</span><span>31 Out</span></div></div></div></article>
-          <article className="panel ranking-panel"><div className="panel-head"><div><h2>Mais engajados</h2><p>Clientes com maior saldo de pontos</p></div><button className="dots" aria-label="Opções"><Icon name="more" /></button></div>{dashboard.ranking.map((cliente, indice) => <div className="rank" key={cliente.id}><span className={'rank-number r' + (indice + 1)}>{indice + 1}</span><span className="rank-avatar">{iniciais(cliente.nome)}</span><span className="rank-name">{cliente.nome}</span><strong>{formatarNumero(cliente.pontos)} <em>pts</em></strong></div>)}{dashboard.ranking.length === 0 && <p className="empty-state">Nenhum cliente cadastrado.</p>}<button className="text-button">Ver todos os clientes <Icon name="arrow" size={16} /></button></article>
-        </div>
-        <article className="panel activity-panel"><div className="panel-head"><div><h2>Atividade recente</h2><p>Últimas movimentações no programa</p></div><button className="text-button">Ver histórico <Icon name="arrow" size={16} /></button></div><div className="activity-list">{dashboard.atividades.filter((atividade) => atividade.cliente.toLowerCase().includes(query.toLowerCase()) || !query).map((atividade) => <div className="activity" key={atividade.criado_em + atividade.descricao}><span className="activity-avatar violet">{iniciais(atividade.cliente)}</span><div><strong>{atividade.cliente}</strong><span>{atividade.descricao}</span></div><b className={atividade.pontos >= 0 ? 'earned' : 'spent'}>{atividade.pontos >= 0 ? '+' : '−'} {formatarNumero(Math.abs(atividade.pontos))} pts</b><time>{tempoRelativo(atividade.criado_em)}</time></div>)}{dashboard.atividades.length === 0 && <p className="empty-state">Nenhum lançamento registrado.</p>}{query && dashboard.atividades.length > 0 && dashboard.atividades.every((atividade) => !atividade.cliente.toLowerCase().includes(query.toLowerCase())) && <p className="empty-state">Nenhum lançamento encontrado.</p>}</div></article>
-      </section>
-    </main>
-  </div>
+      </main>
+    </div>
+  )
 }
 
 export default App
