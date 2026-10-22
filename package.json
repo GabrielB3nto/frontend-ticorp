@@ -17,7 +17,6 @@
     "react-router-dom": "^6.18.0"
   },
   "devDependencies": {
-    "@rollup/rollup-win32-x64-msvc": "^4.64.11",
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
