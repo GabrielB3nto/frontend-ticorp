@@ -65,6 +65,16 @@ legend { margin-bottom: 10px; }
 .form-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; }
 .primary-button { border: 1px solid #55d3c6; background: #55d3c6; color: #09201f; }
 .primary-button:hover { background: #72e4d8; }
+button:disabled { opacity: .6; cursor: wait; }
+.login-main { max-width: 500px; }
+.login-form { display: grid; gap: 20px; }
+.auth-error { border-left-color: #f19c9c; background: #372329; color: #ffd9d9; }
+.profile strong { max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
+.profile button { flex-shrink: 0; }
+
+.reading-list { display: grid; gap: 16px; list-style: none; padding: 0; margin: 0; }
+.reading-list p:last-child { margin-bottom: 0; }
+.reading-list button:disabled { cursor: not-allowed; }
 
 .sidebar { display: grid; align-content: start; gap: 16px; }
 .info-card { padding: 22px; }
